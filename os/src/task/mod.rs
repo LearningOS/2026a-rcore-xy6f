@@ -133,6 +133,38 @@ impl TaskManager {
         inner.tasks[cur].change_program_brk(size)
     }
 
+    /// Increase the syscall counter of the current 'Running' task
+    pub fn increase_current_syscall_times(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        if syscall_id < inner.tasks[cur].syscall_times.len() {
+            inner.tasks[cur].syscall_times[syscall_id] += 1;
+        }
+    }
+
+    /// Get the syscall counter of the current 'Running' task for the given syscall id
+    pub fn get_current_syscall_times(&self, syscall_id: usize) -> u32 {
+        let inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        inner.tasks[cur].syscall_times[syscall_id]
+    }
+
+    /// Map a memory region into the current task's address space.
+    /// Returns false if any page in [start, start+len) is already mapped.
+    pub fn mmap_current(&self, start: usize, len: usize, prot: usize) -> bool {
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        inner.tasks[cur].mmap(start, len, prot)
+    }
+
+    /// Unmap the memory region [start, start+len) from the current task's address space.
+    /// Returns false if the region is not a whole mapped area starting at `start`.
+    pub fn munmap_current(&self, start: usize, len: usize) -> bool {
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        inner.tasks[cur].munmap(start, len)
+    }
+
     /// Switch current `Running` task to the task we have found,
     /// or there is no `Ready` task and we can exit with all applications completed
     fn run_next_task(&self) {
@@ -201,4 +233,24 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// Increase the syscall counter of the current 'Running' task
+pub fn increase_current_syscall_times(syscall_id: usize) {
+    TASK_MANAGER.increase_current_syscall_times(syscall_id);
+}
+
+/// Get the syscall counter of the current 'Running' task for the given syscall id
+pub fn get_current_syscall_times(syscall_id: usize) -> u32 {
+    TASK_MANAGER.get_current_syscall_times(syscall_id)
+}
+
+/// Map a memory region into the current task's address space
+pub fn mmap_current(start: usize, len: usize, prot: usize) -> bool {
+    TASK_MANAGER.mmap_current(start, len, prot)
+}
+
+/// Unmap a memory region from the current task's address space
+pub fn munmap_current(start: usize, len: usize) -> bool {
+    TASK_MANAGER.munmap_current(start, len)
 }
