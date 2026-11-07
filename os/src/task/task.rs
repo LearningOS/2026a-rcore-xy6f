@@ -5,7 +5,18 @@ use super::{kstack_alloc, KernelStack, ProcessControlBlock, TaskContext};
 use crate::trap::TrapContext;
 use crate::{mm::PhysPageNum, sync::UPSafeCell};
 use alloc::sync::{Arc, Weak};
+use alloc::vec::Vec;
 use core::cell::RefMut;
+
+/// A kernel synchronization resource held or waited by a thread.
+/// Used by deadlock detection.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Resource {
+    /// A mutex identified by its id in the process
+    Mutex(usize),
+    /// A semaphore identified by its id in the process
+    Semaphore(usize),
+}
 
 /// Task control block structure
 pub struct TaskControlBlock {
@@ -41,6 +52,10 @@ pub struct TaskControlBlockInner {
     pub task_status: TaskStatus,
     /// It is set when active exit or execution error occurs
     pub exit_code: Option<i32>,
+    /// Resources held by this thread (for deadlock detection)
+    pub held_resources: Vec<Resource>,
+    /// The resource this thread is currently waiting for, if any
+    pub waiting_resource: Option<Resource>,
 }
 
 impl TaskControlBlockInner {
@@ -75,6 +90,8 @@ impl TaskControlBlock {
                     task_cx: TaskContext::goto_trap_return(kstack_top),
                     task_status: TaskStatus::Ready,
                     exit_code: None,
+                    held_resources: Vec::new(),
+                    waiting_resource: None,
                 })
             },
         }

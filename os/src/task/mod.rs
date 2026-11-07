@@ -37,7 +37,7 @@ pub use processor::{
     current_user_token, run_tasks, schedule, take_current_task,
 };
 pub use signal::SignalFlags;
-pub use task::{TaskControlBlock, TaskStatus};
+pub use task::{Resource, TaskControlBlock, TaskStatus};
 
 /// Make current task suspended and switch to the next task
 pub fn suspend_current_and_run_next() {
